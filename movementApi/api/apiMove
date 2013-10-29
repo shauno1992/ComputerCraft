@@ -1,0 +1,513 @@
+-- Movement API - Shauno1992
+-- v1.5
+
+--Misc--
+local ID=" "
+
+-- Variables --
+local turn=false
+local move=false
+local target=0
+
+--FUNCTIONS--
+-- Clears terminal --
+--function clearScreen()
+  --term.setCursorPos(1,1)
+  --term.clear()
+--end
+
+-- Initialises the API --
+function init(id)
+   ID=id
+   --creates coordinates save file--
+   if(fs.exists(ID.."Coords")==false)then
+      fs.makeDir(ID.."Coords")
+   end
+   return true
+end
+
+--SAVE/LOAD--
+
+-- Saves the coordinates --
+function saveCoordinates(locTable,dir,num)
+   local coordFile = fs.open(ID.."Coords/coords","w")
+   coordFile.writeLine(textutils.serialize(locTable))
+   coordFile.writeLine(move)
+   coordFile.writeLine(turn)
+   coordFile.writeLine(target)
+   coordFile.writeLine(dir)
+   coordFile.writeLine(num)
+   coordFile.close()
+end
+
+-- Loads the coordinates --
+function loadCoordinates(locTable)
+   if(fs.exists(ID.."Coords/coords")==true)then   
+      local coordsFile= fs.open(ID.."Coords/coords","r")
+      local currTable = coordsFile.readLine()
+      move = coordsFile.readLine()
+      turn = coordsFile.readLine() 
+      target = coordsFile.readLine()
+      local dir = coordsFile.readLine()
+      local num = coordsFile.readLine()
+      coordsFile.close()
+
+      dummyTable = textutils.unserialize(currTable)
+      locTable.x=dummyTable.x
+      locTable.y=dummyTable.y
+      locTable.z=dummyTable.z
+      locTable.dir=dummyTable.dir
+      
+      -- variable used to check whether the turtle started moving but didn't update its coordinates --
+      if(move=="true") then
+         if(dir=="f")then
+            if(locTable.dir==0)then
+               locTable.x=locTable.x+1
+            elseif(locTable.dir==1)then
+               locTable.z=locTable.z+1
+            elseif(locTable.dir==2)then
+               locTable.x=locTable.x-1
+            elseif(locTable.dir==3)then
+               locTable.z=locTable.z-1
+            end
+         elseif(dir=="b")then
+            if(locTable.dir==0)then
+               locTable.x=locTable.x-1
+            elseif(locTable.dir==1)then
+               locTable.z=locTable.z-1
+            elseif(locTable.dir==2)then
+               locTable.x=locTable.x+1
+            elseif(locTable.dir==3)then
+               locTable.z=locTable.z+1
+            end            
+         elseif(dir=="u")then
+            locTable.y=locTable.y+1
+         elseif(dir=="d")then
+            locTable.y=locTable.y-1            
+         end
+      elseif(turn=="true")then
+         if(dir=="l")then
+            if(locTable.dir==0)then
+               locTable.dir=3
+            elseif(locTable.dir==1)then
+               locTable.dir=0
+            elseif(locTable.dir==2)then
+               locTable.dir=1
+            elseif(locTable.dir==3)then
+               locTable.dir=2
+            end
+         elseif(dir=="r")then
+            if(locTable.dir==0)then
+               locTable.dir=1
+            elseif(locTable.dir==1)then
+               locTable.dir=2
+            elseif(locTable.dir==2)then
+               locTable.dir=3
+            elseif(locTable.dir==3)then
+               locTable.dir=0
+            end
+         end
+      end
+   else
+      return false
+   end
+   return true
+end
+
+--Offsets the turtles front and sides according to frontOffset and sideOffset--
+function offsetTurtle(dir,sideOffset,forwardOffset,locTable)
+   if(dir=="r") then
+      turnRight(locTable)
+      moveForward(sideOffset,locTable)
+      turnLeft(locTable)
+   elseif(dir=="l")then
+      turnLeft(locTable)
+      moveForward(sideOffset,locTable)
+      turnLeft(locTable)
+   end
+   moveForward(forwardOffset,locTable)
+end
+
+------------
+--MOVEMENT--
+------------
+
+-- This function gets the target value (of either x, y or z) depending on the variable num.--
+function getTarget(dir,num, locTable)
+   local returnVal = 0
+   if(dir=="u")then
+      returnVal=locTable.y+num
+   elseif(dir=="d")then
+      returnVal=locTable.y-num
+   elseif(dir=="l")then
+      returnVal = locTable.dir
+      local count=0
+	 while true do
+         returnVal=returnVal-1 
+         count=count+1
+         if((returnVal)<0)then
+            returnVal=3
+         end
+         if(count==num)then break end
+      end
+   elseif(dir=="r")then
+      returnVal=locTable.dir
+      local count=0
+	 while true do
+         returnVal=returnVal+1 
+         count=count+1
+         if((returnVal)>3)then
+            returnVal=0
+         end
+         if(count==num)then break end
+      end
+   elseif(locTable.dir==0)then
+      if(dir=="f")then
+         returnVal=locTable.x+num
+      elseif(dir=="b")then
+         returnVal= locTable.x-num
+      end
+   elseif(locTable.dir==1)then
+      if(dir=="f")then
+         returnVal=locTable.z+num
+      elseif(dir=="b")then
+         returnVal= locTable.z-num
+      end
+   elseif(locTable.dir==2)then
+      if(dir=="f")then
+         returnVal=locTable.x-num
+      elseif(dir=="b")then
+         returnVal= locTable.x+num
+      end
+   elseif(locTable.dir==3)then
+      if(dir=="f")then
+         returnVal=locTable.z-num
+      elseif(dir=="b")then
+         returnVal= locTable.z+num
+      end
+   end
+   return returnVal
+end
+
+-- Gets the correct x/y/z axis the turtle is to move along --
+function getDirection(dir, locTable)
+   local direction = "none"
+   if(dir=="u") or (dir=="d")then
+      direction="y"
+   elseif(dir=="f") or (dir=="b")then
+      if(locTable.dir==0) or (locTable.dir==2)then
+         direction="x"
+      elseif(locTable.dir==1) or (locTable.dir==3)then
+         direction="z"
+      end
+   elseif(dir=="l") or (dir=="r") then
+      direction="turn"
+   end
+   return direction
+end
+
+-- Updates the locTable 'dir' variable (the direction the turtle is facing --
+function updateFacing(dir, locTable)
+   if(dir=="l")then
+      locTable.dir=locTable.dir-1
+   elseif(dir=="r")then
+      locTable.dir=locTable.dir+1
+   end
+   if(locTable.dir<0)then
+      locTable.dir=3
+   elseif(locTable.dir>3)then
+      locTable.dir=0
+   end
+   return true
+end
+
+-- Moves backward once --
+function moveBackward(locTable)
+   moveTurtle("b",1,locTable)
+end
+
+-- Moves backward num amount of spaces --
+function moveBackward(num, locTable)
+   moveTurtle("b", num, locTable)
+end
+
+-- Moves forward once --
+function moveForward(locTable)
+   moveTurtle("f",1,locTable)
+end
+
+-- Moves Forward num amount of spaces --
+function moveForward(num,locTable)
+   moveTurtle("f",num,locTable)
+end
+
+-- Turns Left --
+function turnLeft(locTable)
+   moveTurtle("l",1,locTable)
+end
+
+-- Turns Right --
+function turnRight(locTable)
+   moveTurtle("r",1, locTable)
+end
+ 
+-- Moves up once
+function moveUp(locTable)
+   moveTurtle("u",1,locTable)
+end
+
+-- Moves up num amount of spaces --
+function moveUp(num,locTable)
+   moveTurtle("u",num,locTable)
+end
+
+-- Moves down once
+function moveDown(locTable)
+   moveTurtle("d",1,locTable)
+end
+
+-- Moves down num amount of spaces --
+function moveDown(num,locTable)
+   moveTurtle("d",num,locTable)
+end
+
+-- Faces direction specified by dir. Relative to turtle coords only --
+function faceDirection(dir,locTable)
+   while true do
+      if(locTable.dir<dir)then
+         if(locTable.dir==0) and (dir==3) then 
+            turnLeft(locTable) 
+         else
+            turnRight(locTable)
+         end
+      elseif(locTable.dir>dir)then
+         if(locTable.dir==0) and (dir==3) then
+            turnRight(locTable)
+         else
+            turnLeft(locTable)
+         end
+      else
+         break
+      end
+   end
+end
+
+-- Turns around. Semi-random chance to turn either left or right--
+function turnAround(locTable)
+   if(math.random(0,1)==1)then
+      moveTurtle("r",2,locTable)
+   else
+      moveTurtle("l",2,locTable)
+   end
+end
+
+--checks if the turtle is home--
+function isHome(locTable)
+   if(tonumber(locTable.x)==0) and (tonumber(locTable.y)==0) and(tonumber(locTable.z)==0) and (tonumber(locTable.dir)==0)then
+      returnVal= true
+   else
+      returnVal= false
+   end
+   return returnVal
+end
+
+-- Returns the turtle to the 0,0,0 location --
+function goHome(locTable)
+   goToCoords(0,0,0,locTable)
+   faceDirection(0,locTable)
+end
+
+-- Moves the turtle to the coordinates at x,y,z and passes locTable as needed to update location --
+function goToCoords(x,y,z,locTable)
+   while true do
+      -- X+ plane (default starting direction from 0,0,0 coordinates) --
+      if(locTable.dir==0)then
+         if(locTable.x<x)then
+            moveForward(x-locTable.x,locTable)   
+         elseif(locTable.x>x)then
+            moveBackward(locTable.x-x,locTable)
+         end
+         if(locTable.z<z)then
+            turnRight(locTable)
+         elseif(locTable.z>z)then
+            turnLeft(locTable)
+         end
+      -- Z+ plane --
+      elseif(locTable.dir==1)then
+         if(locTable.x<x)then  
+            turnLeft(locTable)
+         elseif(locTable.x>x)then
+            turnRight(locTable)
+         end
+         if(locTable.z<z)then
+            moveForward(z-locTable.z,locTable)
+         elseif(locTable.z>z)then
+            moveBackward(locTable.z-z,locTable)
+         end
+      -- X- plane --
+      elseif(locTable.dir==2)then
+         if(locTable.x<x)then
+            moveBackward(x-locTable.x,locTable)
+         elseif(locTable.x>x)then
+            moveForward(locTable.x-x,locTable)
+         end
+         if(locTable.z<z)then
+            turnLeft(locTable)
+         elseif(locTable.z>z)then
+            turnRight(locTable)
+         end   
+      -- Z- plane 
+      elseif(locTable.dir==3)then
+         if(locTable.x<x)then
+            turnRight(locTable)
+         elseif(locTable.x>x)then
+            turnLeft(locTable)      
+         end
+         if(locTable.z<z)then
+            moveBackward(z-locTable.z,locTable)
+         elseif(locTable.z>z)then
+            moveForward(locTable.z-z,locTable)
+         end
+      end
+
+      if(locTable.y<y)then
+         moveUp(y-locTable.y,locTable)
+      elseif(locTable.y>y)then
+         moveDown(locTable.y-y,locTable)
+      end
+      
+      if(locTable.x==x) and (locTable.y==y) and (locTable.z==z) then
+         break
+      end
+   end
+   return true
+end
+
+-- Prints the location of the turtle! --
+function printLocation(locTable)
+   print("Coordinates: (x:"..locTable.x..", z:"	..locTable.z..", y:"..locTable.y..", dir: "..locTable.dir..")")
+end
+
+-- The core movement function! --
+function moveTurtle(dir,num, locTable)
+  local returnVal="nil"
+  local direction="none"
+  local numTries=0
+  target=0
+
+  target = getTarget(dir,num,locTable)
+  direction= getDirection(dir,locTable)
+  printLocation(locTable)
+  saveCoordinates(locTable,dir,num)
+  while true do
+     if(dir=="u") then
+      move=true
+      saveCoordinates(locTable,dir,num)
+      if(turtle.up()==true)then
+         locTable.y=locTable.y+1
+         move=false
+         saveCoordinates(locTable,dir,num)
+      else 
+         numTries=numTries+1
+         move=false
+         saveCoordinates(locTable,dir,num)
+      end
+    elseif(dir=="d") then
+      move=true
+      saveCoordinates(locTable,dir,num)
+      if(turtle.down()==true) then 
+         locTable.y=locTable.y-1
+         move=false
+         saveCoordinates(locTable,dir,num)
+      else
+         numTries=numTries+1 
+         move=false
+         saveCoordinates(locTable,dir,num)
+      end
+    elseif(dir=="f") then
+      move=true
+      saveCoordinates(locTable,dir,num)
+      if(turtle.forward()==true) then
+         if(locTable.dir==0)then
+            locTable.x=locTable.x+1
+            move=false
+            saveCoordinates(locTable,dir,num)
+         elseif(locTable.dir==1)then
+            locTable.z=locTable.z+1
+            move=false
+            saveCoordinates(locTable,dir,num)
+         elseif(locTable.dir==2)then 
+            locTable.x=locTable.x-1
+            move=false
+            saveCoordinates(locTable,dir,num)
+         elseif(locTable.dir==3)then
+            locTable.z=locTable.z-1
+            move=false
+            saveCoordinates(locTable,dir,num)
+         end
+      else 
+         numTries=numTries+1
+         move=false
+         saveCoordinates(locTable,dir,num)
+      end
+    elseif(dir=="b") then 
+      move=true
+      saveCoordinates(locTable,dir,num)
+      if(turtle.back()==true) then
+         if(locTable.dir==0)then
+            locTable.x=locTable.x-1
+            move=false
+            saveCoordinates(locTable,dir,num)
+         elseif(locTable.dir==1)then
+            locTable.z=locTable.z-1
+            move=false
+            saveCoordinates(locTable,dir,num)
+         elseif(locTable.dir==2)then 
+            locTable.x=locTable.x+1
+            move=false
+            saveCoordinates(locTable,dir,num)
+         elseif(locTable.dir==3)then
+            locTable.z=locTable.z+1
+            move=false
+            saveCoordinates(locTable,dir,num)
+         end
+      else 
+         numTries=numTries+1 
+         move=false
+         saveCoordinates(locTable,dir,num)
+      end
+    elseif(dir=="l") then
+      turn=true
+      saveCoordinates(locTable,dir,num)
+      turtle.turnLeft()
+      updateFacing(dir,locTable)
+      turn=false
+      saveCoordinates(locTable,dir,num)
+    elseif(dir=="r") then 
+      turn=true
+      saveCoordinates(locTable,dir,num)
+      updateFacing(dir,locTable)
+      turtle.turnRight()
+      turn=false
+      saveCoordinates(locTable,dir,num)
+    end
+    saveCoordinates(locTable,dir,num)    
+    printLocation(locTable)
+
+    --BREAK CHECKS-- 
+    if(direction=="x")then
+       if(locTable.x==target) then break end
+    elseif(direction=="z")then
+       if(locTable.z==target) then break end
+    elseif(direction=="y")then
+       if(locTable.y==target) then break end
+    elseif(direction=="turn") then
+       if(locTable.dir==target)then break end
+    end
+
+    if(numTries==2) then
+      var= false
+    end    
+  end
+  var= true
+end

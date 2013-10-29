@@ -1,0 +1,205 @@
+--Rubber Tree Harvester by shauno1992
+--V1.0
+
+--Slots
+local saplingSlot=1
+local logSlot=2
+local fuelSlot=3
+
+--Misc
+local ID ="RL"
+local OWNER ="shauno1992"
+local minFuel=45
+local totalFuel=0
+local fuelPerTree=0
+local sleepTime=0
+local status="none"
+
+--File vars
+local init=0
+local debug=0
+local isWaiting=0
+
+--Lanes
+local length=0
+local lanes=0
+local lengthGap=0
+local laneGap=0
+local laneStartX=0    -- To tell the turtle where the lane starts relative to the turtles starting location --
+local laneStartZ=0    -- To tell the turtle where the lane starts relative to the turtles starting location --
+
+--Stats
+local currLane=0
+local currTree=0
+local logsInventory=0
+local logsHarvested=0
+local treesHarvested=0
+local numSaplings=0
+local startingFuel=0
+local fuelUsed=0
+
+--Coords
+local locTable={ ["x"]=0, ["y"]=0, ["z"]=0, ["dir"]=0}
+
+--FUNCTIONS--
+
+--Clears terminal--
+function clearScreen()
+  term.setCursorPos(1,1)
+  term.clear()
+end
+
+--Saves all the important stuff!--
+function saveData()
+   fs.makeDir(ID.."Data")
+   local dataFile = fs.open(ID.."Data/data", "w")
+   dataFile.close()
+end
+
+
+-- Loads all the important stuff!--
+function loadData()
+   --Load the program data--
+   local file=fs.open(ID.."Data/data","r")
+   if(fs.exists(ID.."Data/data")==true) then
+      status="Loading data"
+      local fileData = {} --table for holding data
+      local line = file.readLine()
+   
+      repeat 
+      table.insert(fileData,line)
+      line=file.readLine()
+      until line==nil
+      file.close()
+      
+      --debug=fileData[1]
+      --init = tonumber(fileData[2])
+      --length = tonumber(fileData[3])
+      --lanes = tonumber(fileData[4])
+      --currTree= tonumber(fileData[5])
+      --currLane= tonumber(fileData[6])
+      --isWaiting= tonumber(fileData[7])
+      --sleepTime= tonumber(fileData[8]) 
+      --printStatus()
+      os.sleep(2)
+   end
+end
+
+--START CODE--
+
+print("Welcome to test harness for shauno1992's Coordinate-based Movement API!")
+print("This is a WIP! Expect code fixes!")
+os.sleep(2)
+clearScreen()
+print("Loading api!..")
+
+if(fs.exists("API/apiMove")==false) then 
+   print("ERR: Api not found!") 
+   return 
+end
+
+os.loadAPI("API/apiMove")
+print("apiMove Loaded!")
+os.sleep(2)
+clearScreen()
+
+print("apiMove init!")
+apiMove.init(ID)
+print("apiMove initialised!")
+os.sleep(2)
+clearScreen()
+
+print("Loading program data..")
+loadData()
+print("Data Loaded!..")
+os.sleep(2)
+clearScreen()
+
+print("Loading api coordinates..")
+if(apiMove.loadCoordinates(ID,locTable)==false)then
+   print("No coordinates found!")
+else
+   print("Coordinates Loaded!")
+end
+os.sleep(2)
+clearScreen()
+
+if(apiMove.isHome(locTable)==false)then
+   print("Should I go home first? (y/n)")
+   input=io.read()
+   if(input=="y")then
+      print("Moving home now!")
+      apiMove.goHome(locTable)
+      print("I should be home!")
+   end
+end
+os.sleep(2)
+clearScreen()
+
+print("Starting program!")
+os.sleep(2)
+clearScreen()
+while true do
+   print("Please enter some coordinates!")
+   while true do
+      print("X: ")
+      x = io.read()
+      if(tonumber(x)~=nil)then
+         print("Thank you!")
+         break
+      else 
+         print("ERR: Please try again!")
+      end
+   end
+   os.sleep(1)
+   clearScreen()   
+   while true do
+      print("Z: ")
+      z = io.read()
+      if(tonumber(z)~=nil)then
+         print("Thank you!")
+         break
+      else 
+         print("ERR: Please try again!")
+      end
+   end
+   os.sleep(1)
+   clearScreen()
+   while true do
+      print("Y: ")
+      y = io.read()
+      if(tonumber(y)~=nil)then
+         print("Thank you!")
+         break
+      else 
+         print("ERR: Please try again!")
+      end
+   end
+   os.sleep(1)
+   clearScreen()
+   while true do
+      print("Please enter a direction to face! (0-4 where 0 = original direction when turtle started)")
+      dir = io.read()
+      if(tonumber(dir)~=nil)then
+         print("Thank you!")
+         break
+      else 
+         print("ERR: Please try again!")
+      end
+   end
+   os.sleep(2)
+   clearScreen()
+   print("Coords entered were: ("..x..", "..z..", "..y..")")
+   print("Moving there now!")
+   apiMove.goToCoords(tonumber(x),tonumber(y),tonumber(z),locTable)
+   apiMove.faceDirection(tonumber(dir),locTable)
+end
+os.sleep(1)
+
+apiMove.saveCoordinates(locTable)
+print("End of test")
+
+
+
+
+
